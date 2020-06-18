@@ -1,3 +1,10 @@
+*.cpg
+*.dbf
+*.prj
+*.qpj
+*.shp
+*.shx
+
 .DS_Store
 .vim
 *.aux
