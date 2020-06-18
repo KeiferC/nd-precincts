@@ -4,6 +4,8 @@
 **/*.qpj
 **/*.shp*
 **/*.shx
+**/*.sbn
+**/*.sbx
 
 .DS_Store
 .vim
