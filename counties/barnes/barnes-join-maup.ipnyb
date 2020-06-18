@@ -1,0 +1,359 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {},
+    "colab_type": "code",
+    "id": "-eZX_3rR7NYc"
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import geopandas as gpd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import maup\n",
+    "import numpy as np "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {},
+    "colab_type": "code",
+    "id": "spFFr7_m7NYg"
+   },
+   "outputs": [],
+   "source": [
+    "precinct_path='../pres16_tab/NorthDakota_Precincts2016.xlsx'\n",
+    "precinct_data= pd.read_excel(precinct_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# [STEP 1] EXTRACT AND FORMAT ELECTION TABULAR DATA"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {},
+    "colab_type": "code",
+    "id": "Fb20qCUp7NYr"
+   },
+   "outputs": [],
+   "source": [
+    "barnes = precinct_data[7:111]\n",
+    "barnes_precinct = pd.pivot_table(barnes, index=['precinct'], \n",
+    "                                 columns=['office','party'], values=['votes'], \n",
+    "                                 aggfunc = np.sum)\n",
+    "barnes_precinct.columns = barnes_precinct.columns.to_series().str.join('')\n",
+    "barnes_precinct = barnes_precinct.drop(\n",
+    "     columns=['votesUS Presidentamerican delta', 'votesUS Presidentconstitution',\\\n",
+    "              'votesUS Presidentgreen'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {},
+    "colab_type": "code",
+    "id": "1NJUSFDC7NY0"
+   },
+   "outputs": [],
+   "source": [
+    "# Rename election columns using MGGG naming conventions\n",
+    "col_dict= {\n",
+    "    'votesUS Presidentdemocratic' : 'PRES16D', \n",
+    "    'votesUS Presidentlibertarian': 'PRES16L',\n",
+    "    'votesUS Presidentrepublican':  'PRES16R'\n",
+    "}\n",
+    "barnes_precinct = barnes_precinct.rename_axis('PRECINCT')\n",
+    "barnes_precinct = barnes_precinct.rename(columns=col_dict)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Output cleaned election data csv\n",
+    "barnes_precinct.to_csv(precinct_path.rsplit('.',1)[0] + '_barnes.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# [STEP 2] JOIN ELECTION DATA WITH PRECINCT SHAPEFILE"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "colab": {},
+    "colab_type": "code",
+    "id": "3ahUIs5J7NY3"
+   },
+   "outputs": [],
+   "source": [
+    "barnes_shp = './barnes/shp/barnes_precincts.shp'\n",
+    "barnes_gdf = gpd.read_file(barnes_shp)\n",
+    "merged = pd.merge(barnes_gdf, barnes_precinct, \n",
+    "                  left_on=\"PRECINCT\", right_on=\"PRECINCT\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Output joined shapefile\n",
+    "outpath = './barnes/joined/barnes_precincts_joinedPRES16.shp'\n",
+    "merged.to_file(outpath)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# [STEP 3] JOIN CENSUS BLOCKS SHAPEFILES WITH BLOCKS TABULAR DEMOGRAPHICS DATA"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Blocks Shapefile\n",
+    "blocks_shp_path = '../nhgis_blocks_shp/ND_block_2010.shp'\n",
+    "blocks_shp = gpd.read_file(blocks_shp_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Blocks Tabular Data\n",
+    "blocks_path = '../nhgis_blocks/nhgis0003_ds172_2010_block.csv'\n",
+    "blocks_data = pd.read_csv(blocks_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "blocks_joined = pd.merge(blocks_shp, blocks_data, \n",
+    "                         left_on='GISJOIN', right_on='GISJOIN')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# [STEP 4] EXTRACT AND CLEAN JOINED CENSUS BLOCK SHAPEFILE"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# MGGG standard naming conventions\n",
+    "\n",
+    "# H7Z001 TOTPOP: Total population\n",
+    "# H7Z003 NH_WHITE: White, non-Hispanic alone population\n",
+    "# H7Z004 NH_BLACK: Black, non-Hispanic alone population\n",
+    "# H7Z005 NH_AMIN: American Indian and Alaska Native, non-Hispanic alone population\n",
+    "# H7Z006 NH_ASIAN: Asian, non-Hispanic alone population\n",
+    "# H7Z007 NH_NHPI: Native Hawaiian and Pacific Islander, non-Hispanic alone population\n",
+    "# H7Z008 NH_OTHER: Other race, non-Hispanic alone population\n",
+    "# H7Z009 NH_2MORE: Non-Hispanic population of two or more races\n",
+    "# H7Z010 HISP: Total Hispanic/Latino population\n",
+    "# H7Z011 H_WHITE: White, Hispanic alone population\n",
+    "# H7Z012 H_BLACK: Black, Hispanic alone population\n",
+    "# H7Z013 H_AMIN: American Indian and Alaska Native, Hispanic alone population\n",
+    "# H7Z014 H_ASIAN: Asian, Hispanic alone population\n",
+    "# H7Z015 H_NHPI: Native Hawaiian and Pacific Islander, Hispanic alone population\n",
+    "# H7Z016 H_OTHER: Other race, Hispanic alone population\n",
+    "# H7Z017 H_2MORE: Hispanic population of two or more races\n",
+    "# H75001 VAP: Total voting age population\n",
+    "# H75002 HVAP: Hispanic voting age population\n",
+    "# H75005 WVAP: White, non-Hispanic voting age population\n",
+    "# H75006 BVAP: Black, non-Hispanic voting age population\n",
+    "# H75007 AMINVAP: American Indian and Alaska Native, non-Hispanic voting age population\n",
+    "# H75008 ASIANVAP: Asian, non-Hispanic voting age population\n",
+    "# H75009 NHPIVAP: Native Hawaiian and Pacific Islander, non-Hispanic voting age population\n",
+    "# H75010 OTHERVAP: Other race, non-Hispanic voting age population\n",
+    "# H75011 2MOREVAP: Voting age population of two or more races"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "blocks_df = blocks_joined[1348:4281] # Barnes County rows\n",
+    "\n",
+    "nhgis_cols = {\n",
+    " 'H7Z001' : 'TOTPOP',\n",
+    " 'H7Z003' : 'NH_WHITE',\n",
+    " 'H7Z004' : 'NH_BLACK',\n",
+    " 'H7Z005' : 'NH_AMIN',\n",
+    " 'H7Z006' : 'NH_ASIAN',\n",
+    " 'H7Z007' : 'NH_NHPI',\n",
+    " 'H7Z008' : 'NH_OTHER',\n",
+    " 'H7Z009' : 'NH_2MORE',\n",
+    " 'H7Z010' : 'HISP',\n",
+    " 'H7Z011' : 'H_WHITE',\n",
+    " 'H7Z012' : 'H_BLACK',\n",
+    " 'H7Z013' : 'H_AMIN',\n",
+    " 'H7Z014' : 'H_ASIAN',\n",
+    " 'H7Z015' : 'H_NHPI',\n",
+    " 'H7Z016' : 'H_OTHER',\n",
+    " 'H7Z017' : 'H_2MORE',\n",
+    " 'H75001' : 'VAP',\n",
+    " 'H75002' : 'HVAP',\n",
+    " 'H75005' : 'WVAP',\n",
+    " 'H75006' : 'BVAP',\n",
+    " 'H75007' : 'AMINVAP',\n",
+    " 'H75008' : 'ASIANVAP',\n",
+    " 'H75009' : 'NHPIVAP',\n",
+    " 'H75010' : 'OTHERVAP',\n",
+    " 'H75011' : '2MOREVAP'\n",
+    "}\n",
+    "\n",
+    "nhgis_codes = ['COUNTY']\n",
+    "for key in nhgis_cols:\n",
+    "    nhgis_codes.append(key)\n",
+    "\n",
+    "# Extract demographics columns\n",
+    "blocks_df = blocks_df[nhgis_codes]\n",
+    "\n",
+    "# Rename demographics columns\n",
+    "blocks_df = blocks_df.rename(columns=nhgis_cols)\n",
+    "blocks_gdf = gpd.GeoDataFrame(blocks_df, crs='epsg:26914', \n",
+    "                              geometry=blocks_joined['geometry'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# [STEP 5] MAUP - AGGREGATE BLOCKS DEMOGRAPHIC SHP TO PRECINCTS ELECTION SHP"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Ensure CRS is same across both shapefiles\n",
+    "blocks_gdf['geometry'] = blocks_gdf.buffer(0)\n",
+    "blocks_gdf = blocks_gdf.to_crs('epsg:26914')\n",
+    "\n",
+    "barnes_gdf = gpd.read_file('./barnes/joined/barnes_precincts_joinedPRES16.shp')\n",
+    "barnes_gdf = barnes_gdf.to_crs(blocks_gdf.crs)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Note: maup.assign(smaller, larger)\n",
+    "assignment = maup.assign(blocks_gdf, barnes_gdf)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Choose block-level columns to aggregate to precincts shapefile\n",
+    "variables = ['TOTPOP', 'NH_WHITE',\n",
+    "       'NH_BLACK', 'NH_AMIN', 'NH_ASIAN', 'NH_NHPI', 'NH_OTHER', 'NH_2MORE',\n",
+    "       'HISP', 'H_WHITE', 'H_BLACK', 'H_AMIN', 'H_ASIAN', 'H_NHPI', 'H_OTHER',\n",
+    "       'H_2MORE', 'VAP', 'HVAP', 'WVAP', 'BVAP', 'AMINVAP', 'ASIANVAP',\n",
+    "       'NHPIVAP', 'OTHERVAP', '2MOREVAP']\n",
+    "barnes_gdf[variables] = blocks_gdf[variables].groupby(assignment).sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Sanity Check\n",
+    "print(\"TOTAL VAP using blocks:\", blocks_gdf['VAP'].sum())\n",
+    "print(\"TOTAL VAP using barnes:\", barnes_gdf['VAP'].sum())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Output joined demographics and election shapefile\n",
+    "precinct_demo_outpath = './barnes/barnes_county/barnes_county.shp'\n",
+    "barnes_gdf.to_file(precinct_demo_outpath)"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "name": "ND_Precinct.ipynb",
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
