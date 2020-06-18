@@ -6,6 +6,8 @@
 **/*.shx
 **/*.sbn
 **/*.sbx
+**/.ipnyb*
+
 
 .DS_Store
 .vim
