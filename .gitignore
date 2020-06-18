@@ -2,7 +2,7 @@
 **/*.dbf
 **/*.prj
 **/*.qpj
-**/*.shp
+**/*.shp*
 **/*.shx
 
 .DS_Store
