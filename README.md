@@ -1,4 +1,4 @@
-# North Dakota Precincts GeoData
+# North Dakota Precincts Geodata
 
 ## Sources
 
