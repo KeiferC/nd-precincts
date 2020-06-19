@@ -6,7 +6,7 @@
 **/*.shx
 **/*.sbn
 **/*.sbx
-**/.ipnyb*
+**/.ipynb*
 
 
 .DS_Store
